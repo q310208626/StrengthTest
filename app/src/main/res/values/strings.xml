@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">StrengthTest</string>
+    <string name="teststart">开始</string>
+    <string name="bluetooth_search">蓝牙</string>
+    <string name="bluetooth_search_start">搜索</string>
+    <string name="bluetooth_search_cancle">取消</string>
+    <string name="allStrength">总目标:</string>
+    <string name="singleStrength">单次力道:</string>
+    <string name="bluetoothSuggest">请开启蓝牙进行下一步</string>
+    <string name="targetbutton">设置目标</string>
+    <string name="clean_button">清零</string>
+    <string name="leftTarget">剩余目标:</string>
+</resources>
