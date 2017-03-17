@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="reachBarColor">#f24747</color>
+    <color name="unreachBarColor">#e2dada</color>
+    <color name="reachBatTextColor">#0097fc</color>
+    <color name="startButton">#f24747</color>
+    <color name="bluetoothButton">#0097fc</color>
+    <color name="cancleButton">#9c9c9c</color>
+    <color name="black">#000000</color>
+    <color name="clear_button">#acb4a8</color>
+</resources>
