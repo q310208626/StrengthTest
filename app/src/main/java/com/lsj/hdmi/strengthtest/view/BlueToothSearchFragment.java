@@ -185,6 +185,15 @@ public class BlueToothSearchFragment extends Fragment {
     }
 
     @Override
+    public void onStop() {
+        if(bluetoothAdapter.isDiscovering()){
+            bluetoothAdapter.cancelDiscovery();
+        }
+        LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(register);
+        super.onStop();
+    }
+
+    @Override
     public void onDestroy() {
         //取消广播接收器注册
         LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(register);

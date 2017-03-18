@@ -17,6 +17,7 @@ import android.os.Message;
 import android.support.annotation.FloatRange;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NavUtils;
+import android.support.v4.content.ParallelExecutorCompat;
 import android.support.v7.app.AlertDialog;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -35,14 +36,19 @@ import com.daimajia.numberprogressbar.NumberProgressBar;
 import com.lsj.hdmi.strengthtest.R;
 import com.lsj.hdmi.strengthtest.model.AcceptThread;
 
+import org.w3c.dom.Text;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.DecimalFormat;
+import java.util.TreeMap;
 
 /**
  * Created by hdmi on 17-3-9.
  */
 public class ResultShowFragment extends Fragment{
+    public static String TAG="ResultShowFragment";
     private Button startButton;//开始接收按钮
     private Button blueToothButton;//蓝牙按钮
     private Button clearButton;//重置按钮
@@ -59,7 +65,7 @@ public class ResultShowFragment extends Fragment{
     private AcceptThread acceptThread=null;//
     private clientAcceptThread clientAcceptThread=null;//
 
-    private String adress=null;//蓝牙设备地址
+    private String adress="";//蓝牙设备地址
 
     private static boolean firstThread=true;//判断是否是首次启动
 
@@ -116,6 +122,9 @@ public class ResultShowFragment extends Fragment{
                         }
                     }
                     break;
+                case 2:
+                    Toast.makeText(getActivity(),"蓝牙连接断开",Toast.LENGTH_SHORT).show();
+                    break;
             }
         }
     };
@@ -127,16 +136,21 @@ public class ResultShowFragment extends Fragment{
         Bundle bundle=getArguments();
         if(bundle!=null){
             adress=bundle.getString("adress");
-//            SharedPreferences sp = getActivity().getSharedPreferences("adress", Context.MODE_PRIVATE);
-//            sp.edit().putString("adress",adress).commit();
+            SharedPreferences sp = getActivity().getSharedPreferences("adress", Context.MODE_PRIVATE);
+            sp.edit().putString("adress",adress).commit();
+            Log.d(TAG, "onCreateView: ----------bundle!=null------"+adress);
         }
-//        if (adress==null){
-//            SharedPreferences sp = getActivity().getSharedPreferences("adress", Context.MODE_PRIVATE);
-//            adress=sp.getString("adress",null);
-//        }
+        if (adress==null){
+            SharedPreferences sp = getActivity().getSharedPreferences("adress", Context.MODE_PRIVATE);
+            adress=sp.getString("adress","");
+            Log.d(TAG, "onCreateView: ----------adress==null------"+adress);
+        }
 //        Log.d("Result", "onCreateView: --------------------------"+adress);
 //        SharedPreferences sp = getActivity().getSharedPreferences("adress", Context.MODE_PRIVATE);
 //        haConnectDevice=sp.getBoolean("connectDevice",false);
+        SharedPreferences sp = getActivity().getSharedPreferences("init", Context.MODE_PRIVATE);
+        target=sp.getInt("mytarget",100);
+        lefttarget=target;
         Log.d("ResultFragment", "onCreateView: -----------------"+adress);
         View view=null;
         view=inflater.inflate(R.layout.fragment_resultshow,null);
@@ -160,22 +174,35 @@ public class ResultShowFragment extends Fragment{
 
 
         lefttargetTextView.setText(target+"");
-        targetTextView.setText(lefttarget+"");
+        targetTextView.setText(target+"");
         targetEdittext.setInputType( InputType.TYPE_CLASS_NUMBER);
         targetSetButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String mytarget=targetEdittext.getText().toString();
                 if (!TextUtils.isEmpty(mytarget)){
-                    targetTextView.setText(mytarget);
-                    lefttargetTextView.setText(mytarget);
-                    target=Integer.parseInt(mytarget);
-                    lefttarget= Float.parseFloat(mytarget);
-                    allnumberProgressBar.setProgress(100);
+                    try {
+                        if (Integer.parseInt(mytarget) <=50000) {
+                            targetTextView.setText(mytarget);
+                            lefttargetTextView.setText(mytarget);
+                            target = Integer.parseInt(mytarget);
+                            lefttarget = Float.parseFloat(mytarget);
+                            allnumberProgressBar.setProgress(100);
+                            SharedPreferences sp = getActivity().getSharedPreferences("init", Context.MODE_PRIVATE);
+                            sp.edit().putInt("mytarget", Integer.parseInt(mytarget)).commit();
+                        } else {
+                            Toast.makeText(getActivity(), "最大值为50000", Toast.LENGTH_SHORT).show();
+                        }
+                    }catch (NumberFormatException e){
+                        Toast.makeText(getActivity(), "最大值为50000", Toast.LENGTH_SHORT).show();
+                    }
+
+
                 }
             }
         });
 
+        //重置按钮
         clearButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -212,11 +239,10 @@ public class ResultShowFragment extends Fragment{
 //                        }
 //                    }
 //                    firstThread=false;
-                    if(adress!=null){
+                    if(!TextUtils.isEmpty(adress)){
                         if(connectDevice==null){
                             clientAcceptThread=new clientAcceptThread(handler);
                         }
-
                         if (firstThread){
                             clientAcceptThread.start();
                             startButton.setText("暂停");
@@ -233,25 +259,26 @@ public class ResultShowFragment extends Fragment{
                         }
                         firstThread=false;
                     }
+
                 }
             }
         });
 
 
-
+        //启动蓝牙界面
         blueToothButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 checkBluetooth();
                 if(bluetoothAdapter.isEnabled()){
                     Fragment  fragment=new BlueToothSearchFragment();
-                    getActivity().getFragmentManager().beginTransaction().replace(R.id.container,fragment).commit();
+                    getActivity().getFragmentManager().beginTransaction().addToBackStack(null).replace(R.id.container,fragment).commit();
                 }
 
             }
         });
     }
-
+    //重置
     private void reset(){
         targetTextView.setText(target+"");
         lefttargetTextView.setText(target+"");
@@ -277,6 +304,8 @@ public class ResultShowFragment extends Fragment{
 
     private void init(){
         bluetoothAdapter=BluetoothAdapter.getDefaultAdapter();
+        isListener=true;
+        firstThread=true;
     }
 
     //检查蓝牙是否打开
@@ -319,10 +348,11 @@ public class ResultShowFragment extends Fragment{
         public clientAcceptThread(Handler handler){
             this.handler=handler;
             try {
+                //获取设备并进行连接
                 connectDevice = bluetoothAdapter.getRemoteDevice(adress);
-//                SharedPreferences sp = getActivity().getSharedPreferences("adress", Context.MODE_PRIVATE);
-//                sp.edit().putBoolean("connectDevice",true).commit();
                 clientSocket = connectDevice.createRfcommSocketToServiceRecord(BlueToothSearchFragment.MyUUID);
+                bluetoothAdapter.cancelDiscovery();
+                Log.d(TAG, "clientAcceptThread: isdiscovering"+bluetoothAdapter.isDiscovering());
                 clientSocket.connect();
                 is = clientSocket.getInputStream();
 
@@ -333,7 +363,7 @@ public class ResultShowFragment extends Fragment{
         }
         @Override
         public void run() {
-            Log.d("Result", "run: --------------------run");
+            Log.d("Result", "run: --------------------run"+isListener);
             while (isListener) {
                     byte[] buffer = new byte[128];
                     int count = 0;
@@ -349,6 +379,9 @@ public class ResultShowFragment extends Fragment{
                     } catch (IOException e) {
                         isListener = false;
                         Log.d("bluetoothConnect", "run: -------------蓝牙断开链接------------");
+                        Message msg=new Message();
+                        msg.what=2;
+                        handler.sendMessage(msg);
                         e.printStackTrace();
                     }
 
@@ -357,6 +390,7 @@ public class ResultShowFragment extends Fragment{
                 if(is!=null){
                     is.close();
                     clientSocket.close();
+                    //isListener = false;
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -373,6 +407,32 @@ public class ResultShowFragment extends Fragment{
             sbu.append((char) Integer.parseInt(chars[i]));
         }
         return sbu.toString();
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d("ResultShow", "onDestroy: ------------------");
+       isListener=false;
+        SharedPreferences sp = getActivity().getSharedPreferences("adress", Context.MODE_PRIVATE);
+        sp.edit().putString("adress","").commit();
+        super.onDestroy();
+    }
+
+    @Override
+    public void onStop() {
+        Log.d("ResultShow", "onStop: ------------------");
+        //切换蓝牙模块时停止监听，关闭流
+        isListener=false;
+        if(is!=null&&clientSocket!=null){
+            try {
+                is.close();
+                clientSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+        super.onStop();
     }
 
 }
